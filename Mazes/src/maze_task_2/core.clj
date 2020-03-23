@@ -31,67 +31,19 @@
       grid
       (recur (inc count) (conj grid (make-a-row columns))))))
 
-(def grid (atom (make-a-grid 4 4)))
-
-(defn make-a-cell
-  ([row] (make-a-cell row 0))
-  ([row col]
-   ; store size of grid and number of cells
-   (let [size (count @grid) cells (count (first @grid))]
-     ; above top row return maze
-     (cond
-       (= row size) @grid
-       ; top row && last cell do nothing
-       (and (= row (- size 1)) (= col (- cells 1))) 0
-       ; top row carve east
-       (=  row (- size 1)) (do
-                             (swap! grid assoc-in [row col :east] 1)
-                             (swap! grid assoc-in [row (+ col 1) :west] 1))
-       ; not top row && last cell carve north
-       (= col (- cells 1)) (do
-                             (swap! grid assoc-in [row col :north] 1)
-                             (swap! grid assoc-in [(+ row 1) col :south] 1))
-       ; not top row carve north or east
-       :else
-       (if (= 0 (rand-int 2))
-         (do
-           (swap! grid assoc-in [row col :east] 1)
-           (swap! grid assoc-in [row (+ col 1) :west] 1))
-         (do
-           (swap! grid assoc-in [row col :north] 1)
-           (swap! grid assoc-in [(+ row 1) col :south] 1)))))))
-
-
-(defn carve-passages
-  ([] (carve-passages 0))
-  ([row]
-   (if (= row (count @grid))
-     @grid
-     (do
-       (dotimes [col (count (first @grid))]
-         (make-a-cell row col))
-       (carve-passages (inc row))))))
-(def maze (carve-passages))
-
-
-(defroutes handler
-           (GET "/books/:id" [id] (get_book id))
-           (POST "/generate-maze" req (prn req)));[title] (book_handler title)))
-
-(defn -main []
-  (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
-
-(loop [x 0 y 0 grid maze]
-  (when (< x 4)
-    (loop [_x x _y y _grid grid]
-      (when (< _y 4)
-        (print [x _y])
-        (recur _x (inc _y) grid)))
-    (println)
-    (recur (inc x) y grid)))
-
 (defn alter-cell [x y grid]
-  (assoc-in grid [x y] {:north 1, :east 1, :south 1, :west 1}))
+  (cond
+    ; top row & last cell do nothing
+    (and (= x (count grid)) (= y (count(get-in grid [0])))) grid
+    ;if top row only carve east
+    (= x 0) (assoc-in (assoc-in grid [x (+ y 1) :west] 1) [x y :east] 1)
+    ;if eastern cell carve north
+    (= y (count(get-in grid [0]))) (assoc-in (assoc-in grid [(+ x 1) y :south] 1) [x y :north] 1)
+    ; not top row carve north or east
+    :else
+    (if (= 0 (rand-int 2))
+      (assoc-in (assoc-in grid [x (+ y 1) :west] 1) [x y :east] 1)
+      (assoc-in (assoc-in grid [(+ x 1) y :south] 1) [x y :north] 1)))
 
 (defn maze-row [x y maze]
   (loop [count 0 grid maze]
@@ -101,7 +53,6 @@
 
 (defn maze-grid [rows columns maze]
   (loop [count 0 grid maze]  ; loop over rows of empty grid
-    (println grid)
     (if (= rows count)
       grid  ;return grid
       (recur (inc count) (maze-row count columns grid))))) ;return value of maze-row is now grid
@@ -113,6 +64,12 @@
 ;generate maze function
 (generate-maze 4 4)
 
+(defroutes handler
+           (GET "/books/:id" [id] (get_book id))
+           (POST "/generate-maze" req (prn req)));[title] (book_handler title)))
+
+(defn -main []
+  (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
 
 
 
@@ -124,4 +81,3 @@
 ;  )
 ;
 ;(to-s maze)
-
