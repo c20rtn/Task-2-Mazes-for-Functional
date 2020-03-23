@@ -1,7 +1,15 @@
 (ns maze-task-2.core
   (:require [monger.core :as mg]
             [monger.collection :as mc]
-            [clojure.data.json :as json])
+            [clojure.data.json :as json]
+            [compojure.core :refer :all]
+            [compojure.route :as route]
+            [compojure.handler :refer [site]]
+            [ring.middleware.defaults :refer :all]
+            [ring.middleware.params :refer [wrap-params]]
+            [clojure.java.jdbc :as sql]
+            [stencil.core :refer [render-string]]
+            [ring.adapter.jetty :as jetty])
   (:import [com.mongodb MongoOptions ServerAddress]
            [org.bson.types ObjectId]
            [com.mongodb DB WriteConcern]))
@@ -66,6 +74,47 @@
 (def maze (carve-passages))
 
 
+(defroutes handler
+           (GET "/books/:id" [id] (get_book id))
+           (POST "/generate-maze" req (prn req)));[title] (book_handler title)))
+
+(defn -main []
+  (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
+
+(loop [x 0 y 0 grid maze]
+  (when (< x 4)
+    (loop [_x x _y y _grid grid]
+      (when (< _y 4)
+        (print [x _y])
+        (recur _x (inc _y) grid)))
+    (println)
+    (recur (inc x) y grid)))
+
+(defn alter-cell [x y grid]
+  (assoc-in grid [x y] {:north 1, :east 1, :south 1, :west 1}))
+
+(defn maze-row [x y maze]
+  (loop [count 0 grid maze]
+    (if (= y count)
+      grid
+      (recur (inc count) (alter-cell x count grid)))))
+
+(defn maze-grid [rows columns maze]
+  (loop [count 0 grid maze]  ; loop over rows of empty grid
+    (println grid)
+    (if (= rows count)
+      grid  ;return grid
+      (recur (inc count) (maze-row count columns grid))))) ;return value of maze-row is now grid
+
+(defn generate-maze [rows cols]
+  ;uses empty grid and row col numbers
+  (maze-grid rows cols (make-a-grid rows cols)))
+
+;generate maze function
+(generate-maze 4 4)
+
+
+
 
 ;(defn to-s [grid]
 ;  (print "+")
@@ -76,47 +125,3 @@
 ;
 ;(to-s maze)
 
-
-
-;(defn make-a-cell
-;  ([grid row] (make-a-cell grid row 0)) ;If
-;  ([grid row col]
-;   ; store size of grid and number of cells
-;   (let [size (count grid) cells (count (first grid))]
-;     ; above top row return maze
-;     (cond
-;       (= row size) grid
-;       ; top row && last cell do nothing
-;       (and (= row (- size 1)) (= col (- cells 1))) 0
-;       ; top row carve east
-;       (=  row (- size 1)) (do
-;                             (swap! grid assoc-in [row col :east] 1)
-;                             (swap! grid assoc-in [row (+ col 1) :west] 1))
-;       ; not top row && last cell carve north
-;       (= col (- cells 1)) (do
-;                             (swap! grid assoc-in [row col :north] 1)
-;                             (swap! grid assoc-in [(+ row 1) col :south] 1))
-;       ; not top row carve north or east
-;       :else
-;       (if (= 0 (rand-int 2))
-;         (do
-;           (swap! grid assoc-in [row col :east] 1)
-;           (swap! grid assoc-in [row (+ col 1) :west] 1))
-;         (do
-;           (swap! grid assoc-in [row col :north] 1)
-;           (swap! grid assoc-in [(+ row 1) col :south] 1)))))))
-;
-;(defn carve-passages
-;  ([grid] carve-passages [grid 0 []])
-;  ([grid row] (if (= row (count grid))
-;    grid
-;    (do
-;      (carve-passages
-;        (dotimes [col (count (first grid))]
-;          (make-a-cell grid row col))
-;        (inc row)
-;        )))))
-;
-;(defn generate-maze [rows cols]
-;  (carve-passages (make-a-grid rows cols)))
-;(generate-maze 4 4)
