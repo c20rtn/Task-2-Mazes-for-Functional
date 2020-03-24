@@ -12,4 +12,6 @@
                  [stencil "0.5.0"]
                  [com.h2database/h2 "1.4.199"]
                  [ring/ring-defaults "0.3.2"]]
+  :ring {:handler maze_task_2.core/-main}
+  :main maze-task-2.core
   :repl-options {:init-ns maze-task-2.core})
