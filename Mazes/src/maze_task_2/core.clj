@@ -14,11 +14,6 @@
            [org.bson.types ObjectId]
            [com.mongodb DB WriteConcern]))
 
-;  a. These mazes must initially square.
-;  b. Your program must be capable of building square mazes in at least three different sizes.
-;  c. You may extend the generator to include triangular, circular or any other shape of two-dimensional maze that you wish.
-;  d. Maps are represented using structured data and held in a simple text file.
-
 (defn make-a-row [columns]
   (loop [count 0 row []]
     (if (= columns count)
@@ -34,16 +29,16 @@
 (defn alter-cell [x y grid]
   (cond
     ; top row & last cell do nothing
-    (and (= x (count grid)) (= y (count(get-in grid [0])))) grid
+    (and (= x 0) (= y (- (count(get-in grid [0])) 1))) grid
     ;if top row only carve east
     (= x 0) (assoc-in (assoc-in grid [x (+ y 1) :west] 1) [x y :east] 1)
     ;if eastern cell carve north
-    (= y (count(get-in grid [0]))) (assoc-in (assoc-in grid [(+ x 1) y :south] 1) [x y :north] 1)
+    (= y (- (count(get-in grid [0])) 1)) (assoc-in (assoc-in grid [(- x 1) y :south] 1) [x y :north] 1)
     ; not top row carve north or east
     :else
     (if (= 0 (rand-int 2))
       (assoc-in (assoc-in grid [x (+ y 1) :west] 1) [x y :east] 1)
-      (assoc-in (assoc-in grid [(+ x 1) y :south] 1) [x y :north] 1)))
+      (assoc-in (assoc-in grid [(- x 1) y :south] 1) [x y :north] 1))))
 
 (defn maze-row [x y maze]
   (loop [count 0 grid maze]
@@ -61,23 +56,22 @@
   ;uses empty grid and row col numbers
   (maze-grid rows cols (make-a-grid rows cols)))
 
-;generate maze function
-(generate-maze 4 4)
+(defn to-s [grid]
+  (println (apply str "+" (repeat (count (get-in grid [0])) "---+")))
+  (loop [x 0]
+    (when (< x (count grid))
+      (println (apply str "|" (for [col (get-in grid [x])]
+                            (if (= (col :east) 0) "   |" "    "))))
+      (println (apply str "+" (for [col (get-in grid [x])]
+                            (if (= (col :south) 0) "---+""   +"))))
+      (recur (+ x 1)))))
 
-(defroutes handler
-           (GET "/books/:id" [id] (get_book id))
-           (POST "/generate-maze" req (prn req)));[title] (book_handler title)))
+(defn generate-maze-json [rows cols]
+  (json/write-str (generate-maze 10 10)))
+(generate-maze-json 5 5)
 
-(defn -main []
-  (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
-
+(to-s (generate-maze 10 10))
 
 
-;(defn to-s [grid]
-;  (print "+")
-;  (for [x (range 0 (count (first grid))) ]
-;    (print "---+"))
-;  (print "\n")
-;  )
-;
-;(to-s maze)
+
+
