@@ -64,7 +64,7 @@
       output
       (recur (+ x 1) (apply str output "|" (apply str(for [col (get-in grid [x])]
                                                        (if (= (col :east) 0) "    |" "     "))) "\n"
-                            "+" (apply str (for [col (get-in grid [x])]
+                                       "+" (apply str (for [col (get-in grid [x])]
                                              (if (= (col :south) 0) "----+""    +"))) "\n")))))
 
 (defn pp-maze [grid]  ;Prints the maze to console
@@ -72,9 +72,9 @@
   (loop [x 0]
     (when (< x (count grid))
       (println (apply str "|" (for [col (get-in grid [x])]
-                            (if (= (col :east) 0) "    |" "     "))))
+                                (if (= (col :east) 0) "    |" "     "))))
       (println (apply str "+" (for [col (get-in grid [x])]
-                            (if (= (col :south) 0) "----+""    +"))))
+                                (if (= (col :south) 0) "----+""    +"))))
       (recur (+ x 1)))))
 
 (defn to-html [s]
@@ -85,9 +85,8 @@
 
 (defroutes handler
     (GET "/gen-maze" []
-      (binary-generate-maze-json 10 10))
-    (GET "/maze/:x" [x :<< as-int]
-      (to-html (to-s (binary-generate-maze x x)))))
+        (binary-generate-maze-json 10 10))
+    (GET "/maze/:size" [size :<< as-int] (binary-generate-maze-json size size)))
 
 (defn -main []
   (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
