@@ -8,7 +8,6 @@
             [compojure.handler :refer [site]]
             [ring.middleware.defaults :refer :all]
             [ring.middleware.params :refer [wrap-params]]
-            [clojure.java.jdbc :as sql]
             [stencil.core :refer [render-string]]
             [ring.adapter.jetty :as jetty])
   (:use [hiccup.core])
@@ -63,7 +62,7 @@
     (if (>= x (count grid))
       output
       (recur (+ x 1) (apply str output "|" (apply str(for [col (get-in grid [x])]
-                                                       (if (= (col :east) 0) "    |" "     "))) "\n"
+                                             (if (= (col :east) 0) "    |" "     "))) "\n"
                                        "+" (apply str (for [col (get-in grid [x])]
                                              (if (= (col :south) 0) "----+""    +"))) "\n")))))
 
@@ -83,10 +82,33 @@
 (defn binary-generate-maze-json [rows cols]
   (json/write-str (binary-generate-maze rows cols)))
 
+(defn get-maze-by-name [name]
+  (let [conn (mg/connect)
+        db   (mg/get-db conn "MazeDB")
+        coll "Mazes"]
+    ((mc/find-one-as-map db coll {:name name}) :maze)))
+
+(defn get-random-maze []
+  (let [conn (mg/connect)
+        db   (mg/get-db conn "MazeDB")
+        coll "Mazes"]
+    (:maze (rand-nth (mc/find-maps db coll)))))
+
+(defn create-binary-maze-by-name [name x y]
+  (let [conn (mg/connect)
+        db   (mg/get-db conn "MazeDB")
+        coll "Mazes"]
+    (mc/insert db coll {:name name :maze (binary-generate-maze-json x y)}))
+  (str "POSTED " name))
+
 (defroutes handler
-    (GET "/gen-maze" []
-        (binary-generate-maze-json 10 10))
-    (GET "/maze/:size" [size :<< as-int] (binary-generate-maze-json size size)))
+    (GET "/get/:name" [name]
+        (get-maze-by-name name))
+    (GET "/binary/:name/:x/:y" [name x y]
+        (create-binary-maze-by-name name (as-int x) (as-int y)))
+    (GET "/random" []
+        (get-random-maze))
+    (route/not-found [:h1 "Page not found"]))
 
 (defn -main []
   (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
