@@ -101,13 +101,23 @@
     (mc/insert db coll {:name name :maze (binary-generate-maze-json x y)}))
   (str "POSTED " name))
 
+(defn list-mazes []
+  (clojure.string/join "+" (let [conn (mg/connect)
+                                 db   (mg/get-db conn "MazeDB")
+                                 coll "Mazes"]
+                             (map #(% :name)(mc/find-maps db coll)))))
+
 (defroutes handler
     (GET "/get/:name" [name]
         (get-maze-by-name name))
     (GET "/binary/:name/:x/:y" [name x y]
         (create-binary-maze-by-name name (as-int x) (as-int y)))
+    (GET "/maze/:x/:y" [x y]
+        (binary-generate-maze-json (as-int x) (as-int y)))
     (GET "/random" []
         (get-random-maze))
+    (GET "/list" []
+        (list-mazes))
     (route/not-found [:h1 "Page not found"]))
 
 (defn -main []
