@@ -224,7 +224,7 @@
               :placeholder "Enter y"
               :style "color: darkcyan; border: 1px solid darkcyan; background-color: lightcyan; padding: 15px; margin: 10px; border-radius:10px;" }]
       [:br]
-     [:input {:style "background-color: darkcyan; border-radius:10px; border: none; color: white; padding: 15px 32px; margin: 10px;" :type "submit" :value "Solve new maze"}]]]))
+     [:input {:style "background-color: darkcyan; border-radius:10px; border: none; color: white; padding: 15px 32px; margin: 10px;" :type "submit" :value "Create new maze"}]]]))
 
 (defroutes handler
            (GET "/solve" [name :as {u :uri rm :request-method}] ;brings in the parameters as a request

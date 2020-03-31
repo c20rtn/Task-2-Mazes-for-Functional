@@ -15,18 +15,19 @@
            [org.bson.types ObjectId]
            [com.mongodb DB WriteConcern]))
 
+;Both functions create a maze of zeros
 (defn make-a-row [columns]
   (loop [count 0 row []]
     (if (= columns count)
       row
       (recur (inc count) (conj row {:north 0 :east 0 :south 0 :west 0})))))
-
 (defn make-a-grid [rows columns]
   (loop [count 0 grid []]
     (if (= rows count)
       grid
       (recur (inc count) (conj grid (make-a-row columns))))))
 
+;Alters the cell of the maze and carves out the maze
 (defn binary-alter-cell [x y grid]
   (cond
     ; top row & last cell do nothing
@@ -37,12 +38,12 @@
     (= y (- (count(get-in grid [0])) 1)) (assoc-in (assoc-in grid [(- x 1) y :south] 1) [x y :north] 1)
     ; not top row carve north or east
     :else
-    (if (= 0 (rand-int 2))
+    (if (= 0 (rand-int 2))  ;randomly carve north or east
       (assoc-in (assoc-in grid [x (+ y 1) :west] 1) [x y :east] 1)
       (assoc-in (assoc-in grid [(- x 1) y :south] 1) [x y :north] 1))))
 
 (defn binary-maze-row [x y maze]
-  (loop [count 0 grid maze]
+  (loop [count 0 grid maze]; loop over cells
     (if (= y count)
       grid
       (recur (inc count) (binary-alter-cell x count grid)))))
@@ -56,44 +57,24 @@
 (defn binary-generate-maze [rows cols]
   ;uses empty grid and row col numbers
   (binary-maze-grid rows cols (make-a-grid rows cols)))
-
-(defn to-s [grid]  ;Returns the maze as a string
-  (loop [x 0 output (apply str "+" (apply str(for [col (get-in grid [0])] "----+")) "\n")]
-    (if (>= x (count grid))
-      output
-      (recur (+ x 1) (apply str output "|" (apply str(for [col (get-in grid [x])]
-                                             (if (= (col :east) 0) "    |" "     "))) "\n"
-                                       "+" (apply str (for [col (get-in grid [x])]
-                                             (if (= (col :south) 0) "----+""    +"))) "\n")))))
-
-(defn pp-maze [grid]  ;Prints the maze to console
-  (println (apply str "+" (repeat (count (get-in grid [0])) "----+")))
-  (loop [x 0]
-    (when (< x (count grid))
-      (println (apply str "|" (for [col (get-in grid [x])]
-                                (if (= (col :east) 0) "    |" "     "))))
-      (println (apply str "+" (for [col (get-in grid [x])]
-                                (if (= (col :south) 0) "----+""    +"))))
-      (recur (+ x 1)))))
-
-(defn to-html [s]
-  (html [:pre (clojure.string/replace s #"\r\n|\n|\r" "<br />\n")]))
-
 (defn binary-generate-maze-json [rows cols]
   (json/write-str (binary-generate-maze rows cols)))
 
+;Sends the json of a named maze
 (defn get-maze-by-name [name]
   (let [conn (mg/connect)
         db   (mg/get-db conn "MazeDB")
         coll "Mazes"]
     ((mc/find-one-as-map db coll {:name name}) :maze)))
 
+;Sends the json of a random maze
 (defn get-random-maze []
   (let [conn (mg/connect)
         db   (mg/get-db conn "MazeDB")
         coll "Mazes"]
     (:maze (rand-nth (mc/find-maps db coll)))))
 
+;Creates a new maze and stores it
 (defn create-binary-maze-by-name [name x y]
   (let [conn (mg/connect)
         db   (mg/get-db conn "MazeDB")
@@ -101,6 +82,7 @@
     (mc/insert db coll {:name name :maze (binary-generate-maze-json x y)}))
   (str "POSTED " name))
 
+;returns a list of maze names
 (defn list-mazes []
   (clojure.string/join "+" (let [conn (mg/connect)
                                  db   (mg/get-db conn "MazeDB")
