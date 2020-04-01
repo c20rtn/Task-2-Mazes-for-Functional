@@ -15,6 +15,17 @@
            [org.bson.types ObjectId]
            [com.mongodb DB WriteConcern]))
 
+;Just a debugging function to print to console and see if algorithms return a true maze
+(defn pp-maze [grid]  ;Prints the maze to console
+  (println (apply str "+" (repeat (count (get-in grid [0])) "----+")))
+  (loop [x 0]
+    (when (< x (count grid))
+      (println (apply str "|" (for [col (get-in grid [x])]
+                                (if (= (col :east) 0) "    |" "     "))))
+      (println (apply str "+" (for [col (get-in grid [x])]
+                                (if (= (col :south) 0) "----+""    +"))))
+      (recur (+ x 1)))))
+
 ;Both functions create a maze of zeros
 (defn make-a-row [columns]
   (loop [count 0 row []]
@@ -27,6 +38,7 @@
       grid
       (recur (inc count) (conj grid (make-a-row columns))))))
 
+;=============================== Binary Tree Maze Algorithm ===============================
 ;Alters the cell of the maze and carves out the maze
 (defn binary-alter-cell [x y grid]
   (cond
@@ -59,6 +71,87 @@
   (binary-maze-grid rows cols (make-a-grid rows cols)))
 (defn binary-generate-maze-json [rows cols]
   (json/write-str (binary-generate-maze rows cols)))
+;==========================================================================================
+
+;================================ Aldous-Broder Algorithm =================================
+
+(defn aldous-broder-cell [maze new-cell current]
+  (if (some #(= 1 %) (vals (get-in maze [(new-cell :x) (new-cell :y)])));If passage has been carved to this cell already
+    maze
+    (cond
+      ;if new cell is left
+      (and (= (new-cell :x)(current :x)) (= (-(new-cell :y)(current :y)) -1)) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :east] 1) [(current :x)(current :y) :west] 1)
+      ;if new cell is right
+      (and (= (new-cell :x)(current :x)) (= (-(new-cell :y)(current :y)) 1)) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :west] 1) [(current :x)(current :y) :east] 1)
+      ;if new cell is above
+      (and (= (-(new-cell :x)(current :x)) -1) (= (new-cell :y)(current :y))) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :south] 1) [(current :x)(current :y) :north] 1)
+      ;if new cell is below
+      (and (= (-(new-cell :x)(current :x)) 1) (= (new-cell :y)(current :y))) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :north] 1) [(current :x)(current :y) :south] 1))))
+
+(defn aldous-broder-choose-cell [cell rows cols]
+  (cond
+    ;if top left corner
+    (and (= (cell :x) 0) (= (cell :y) 0)) (let [direction (rand-int 2)]
+                                            (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+                                                  (= direction 1) {:x (+ (cell :x) 1) :y (cell :y)}))
+    ;if top right corner
+    (and (= (cell :x) 0) (= (cell :y) (- cols 1))) (let [direction (rand-int 2)]
+                                                     (cond (= direction 0) {:x (cell :x) :y (- (cell :y) 1)}
+                                                           (= direction 1) {:x (+ (cell :x) 1) :y (cell :y)}))
+    ;if bottom left corner
+    (and (= (cell :x) (- rows 1)) (= (cell :y) 0)) (let [direction (rand-int 2)]
+                                                     (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+                                                           (= direction 1) {:x (- (cell :x) 1) :y (cell :y)}))
+    ;if bottom right corner
+    (and (= (cell :x) (- rows 1)) (= (cell :y) (- cols 1))) (let [direction (rand-int 2)]
+                                                              (cond (= direction 0) {:x (cell :x) :y (- (cell :y) 1)}
+                                                                    (= direction 1) {:x (- (cell :x) 1) :y (cell :y)}))
+    ;if top row
+    (= (cell :x) 0) (let [direction (rand-int 3)]
+                     (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+                           (= direction 1) {:x (cell :x) :y (- (cell :y) 1)}
+                           (= direction 2) {:x (+ (cell :x) 1) :y (cell :y)}))
+    ;if right col
+    (= (cell :y) (- cols 1))(let [direction (rand-int 3)]
+                              (cond (= direction 0) {:x (cell :x) :y (- (cell :y) 1)}
+                                    (= direction 1) {:x (- (cell :x) 1) :y (cell :y)}
+                                    (= direction 2) {:x (+ (cell :x) 1) :y (cell :y)}))
+    ;if bottom row
+    (= (cell :x) (- rows 1))(let [direction (rand-int 3)]
+                              (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+                                    (= direction 1) {:x (cell :x) :y (- (cell :y) 1)}
+                                    (= direction 2) {:x (- (cell :x) 1) :y (cell :y)}))
+    ;if left col
+    (= (cell :y) 0)(let [direction (rand-int 3)]
+                     (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+                           (= direction 1) {:x (- (cell :x) 1) :y (cell :y)}
+                           (= direction 2) {:x (+ (cell :x) 1) :y (cell :y)}))
+    :else
+    (let [direction (rand-int 4)]
+      (cond (= direction 0) {:x (cell :x) :y (+ (cell :y) 1)}
+            (= direction 1) {:x (cell :x) :y (- (cell :y) 1)}
+            (= direction 2) {:x (+ (cell :x) 1) :y (cell :y)}
+            (= direction 3) {:x (- (cell :x) 1) :y (cell :y)}))))
+
+(defn aldous-broder [rows cols grid]
+  (let [limit (* rows cols)]
+    (loop
+      [maze grid count 1 current {:x (rand-int rows) :y (rand-int cols)}]
+      (if (= count limit)
+        maze
+        (let [new-cell (aldous-broder-choose-cell current rows cols)
+              new-maze (aldous-broder-cell maze new-cell current)]
+           (recur new-maze
+                  (if (= maze new-maze) count (inc count))
+                  new-cell))))))
+
+(defn aldous-broder-generate-maze [rows cols]
+  ;uses empty grid and row col numbers
+  (aldous-broder rows cols (make-a-grid rows cols)))
+(defn aldous-broder-generate-maze-json [rows cols]
+  (json/write-str (aldous-broder-generate-maze rows cols)))
+
+;==========================================================================================
 
 ;Sends the json of a named maze
 (defn get-maze-by-name [name]
