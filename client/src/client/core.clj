@@ -48,7 +48,10 @@
     (slurp (str "http://localhost:3000/maze/" x "/" y))
     :key-fn keyword))
 
-(defn create-maze [x y name] ;Creates a maze of name and size and save to DB
+(defn create-ad [x y name] ;Creates a maze of name and size and save to DB
+  (slurp (str "http://localhost:3000/ad/" (clojure.string/replace name #" " "%20") "/" x "/" y)))
+
+(defn create-binary [x y name] ;Creates a maze of name and size and save to DB
   (slurp (str "http://localhost:3000/binary/" (clojure.string/replace name #" " "%20") "/" x "/" y)))
 
 (defn list-mazes [] ;Gets the list of maze names from the DB
@@ -112,6 +115,7 @@
                   (if (= (cell :west) 1) ;if passage west
                     (if (= ((get-in grid [(coords :x) (- (coords :y) 1)]) :count) (- (coords :count) 1))
                       {:x (coords :x) , :y (- (coords :y) 1), :count (- (coords :count) 1)}))))))
+
 ;gets the shortest path following the dijkstra algorithm
 (defn get-shortest-path [maze x y]
   (loop [queue [{:x x :y y :count (:count (get-in maze [x y]))}]]
@@ -131,7 +135,7 @@
 ;To create walls the function creates CSS borders and distances are represented through numbers and cell colour
 (defn to-html-table [grid]  ;Prints the maze to console
   (let [ratio (+(get-max grid)1)
-        path (get-shortest-path grid (- (count grid) 1) 0)  ;Get shortest path
+        path (get-shortest-path grid (- (count grid) 1) (- (count (get-in grid [0])) 1))  ;Get shortest path
         maze (dijkstra-prep grid)]
     (html
       [:h1 {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"} "Maze solver" ]
@@ -203,9 +207,9 @@
 
     ;Form to create a maze then add to DB
     [:div {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"}
-     [:h2 {:style "margin:10px;"} "Create Maze"]
+     [:h2 {:style "margin:10px;"} "Create Binary Maze"]
      [:form
-      {:action "/create"}
+      {:action "/create-binary"}
      [:input {:id "name"
               :type "text"
               :name "name"
@@ -224,7 +228,31 @@
               :placeholder "Enter y"
               :style "color: darkcyan; border: 1px solid darkcyan; background-color: lightcyan; padding: 15px; margin: 10px; border-radius:10px;" }]
       [:br]
-     [:input {:style "background-color: darkcyan; border-radius:10px; border: none; color: white; padding: 15px 32px; margin: 10px;" :type "submit" :value "Create new maze"}]]]))
+     [:input {:style "background-color: darkcyan; border-radius:10px; border: none; color: white; padding: 15px 32px; margin: 10px;" :type "submit" :value "Create new maze"}]]]
+
+    [:div {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"}
+     [:h2 {:style "margin:10px;"} "Create Aldous Broder Maze"]
+     [:form
+      {:action "/create-ad"}
+      [:input {:id "name"
+               :type "text"
+               :name "name"
+               :placeholder "Enter name"
+               :style "color: darkcyan; border: 1px solid darkcyan; background-color: lightcyan; padding: 15px; margin: 10px; border-radius:10px;" }]
+      [:br]
+      [:input {:id "x"
+               :type "text"
+               :name "x"
+               :placeholder "Enter x"
+               :style "color: darkcyan; border: 1px solid darkcyan; background-color: lightcyan; padding: 15px; margin: 10px; border-radius:10px;" }]
+      [:br]
+      [:input {:id "y"
+               :type "text"
+               :name "y"
+               :placeholder "Enter y"
+               :style "color: darkcyan; border: 1px solid darkcyan; background-color: lightcyan; padding: 15px; margin: 10px; border-radius:10px;" }]
+      [:br]
+      [:input {:style "background-color: darkcyan; border-radius:10px; border: none; color: white; padding: 15px 32px; margin: 10px;" :type "submit" :value "Create new maze"}]]]))
 
 (defroutes handler
            (GET "/solve" [name :as {u :uri rm :request-method}] ;brings in the parameters as a request
@@ -233,8 +261,10 @@
              (to-html-table (dijkstra (get-random))))
            (GET "/solve-new" [x y :as {u :uri rm :request-method}]
              (to-html-table (dijkstra (solve-new-maze (as-int x) (as-int y)))))
-           (GET "/create" [name x y :as {u :uri rm :request-method}]
-             (create-maze (as-int x) (as-int y) name))
+           (GET "/create-binary" [name x y :as {u :uri rm :request-method}]
+             (create-binary (as-int x) (as-int y) name))
+           (GET "/create-ad" [name x y :as {u :uri rm :request-method}]
+             (create-ad (as-int x) (as-int y) name))
            (GET "/" []
              (home-page))
            (route/not-found (html [:h1 {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"} "Page not found"])))

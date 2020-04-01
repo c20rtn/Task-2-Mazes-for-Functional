@@ -77,7 +77,7 @@
 
 (defn aldous-broder-cell [maze new-cell current]
   (if (some #(= 1 %) (vals (get-in maze [(new-cell :x) (new-cell :y)])));If passage has been carved to this cell already
-    maze
+    maze  ;returns maze if passage has been carved already
     (cond
       ;if new cell is left
       (and (= (new-cell :x)(current :x)) (= (-(new-cell :y)(current :y)) -1)) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :east] 1) [(current :x)(current :y) :west] 1)
@@ -89,6 +89,7 @@
       (and (= (-(new-cell :x)(current :x)) 1) (= (new-cell :y)(current :y))) (assoc-in (assoc-in maze [(new-cell :x) (new-cell :y) :north] 1) [(current :x)(current :y) :south] 1))))
 
 (defn aldous-broder-choose-cell [cell rows cols]
+  ;Used cond to make sure not to carve out of the maze
   (cond
     ;if top left corner
     (and (= (cell :x) 0) (= (cell :y) 0)) (let [direction (rand-int 2)]
@@ -134,15 +135,15 @@
             (= direction 3) {:x (- (cell :x) 1) :y (cell :y)}))))
 
 (defn aldous-broder [rows cols grid]
-  (let [limit (* rows cols)]
+  (let [limit (* rows cols)] ;sets the limit of
     (loop
-      [maze grid count 1 current {:x (rand-int rows) :y (rand-int cols)}]
-      (if (= count limit)
+      [maze grid count 1 current {:x (rand-int rows) :y (rand-int cols)}] ;start with random maze position
+      (if (= count limit) ;once all
         maze
-        (let [new-cell (aldous-broder-choose-cell current rows cols)
-              new-maze (aldous-broder-cell maze new-cell current)]
+        (let [new-cell (aldous-broder-choose-cell current rows cols) ;sets the
+              new-maze (aldous-broder-cell maze new-cell current)] ;sets the
            (recur new-maze
-                  (if (= maze new-maze) count (inc count))
+                  (if (= maze new-maze) count (inc count))  ;if been carved the increment the count
                   new-cell))))))
 
 (defn aldous-broder-generate-maze [rows cols]
@@ -167,7 +168,15 @@
         coll "Mazes"]
     (:maze (rand-nth (mc/find-maps db coll)))))
 
-;Creates a new maze and stores it
+;Creates a new aldous broder maze and stores it
+(defn create-ad-maze-by-name [name x y]
+  (let [conn (mg/connect)
+        db   (mg/get-db conn "MazeDB")
+        coll "Mazes"]
+    (mc/insert db coll {:name name :maze (aldous-broder-generate-maze-json x y)}))
+  (str "POSTED " name))
+
+;Creates a new binary maze and stores it
 (defn create-binary-maze-by-name [name x y]
   (let [conn (mg/connect)
         db   (mg/get-db conn "MazeDB")
@@ -187,6 +196,8 @@
         (get-maze-by-name name))
     (GET "/binary/:name/:x/:y" [name x y]
         (create-binary-maze-by-name name (as-int x) (as-int y)))
+    (GET "/ad/:name/:x/:y" [name x y]
+        (create-ad-maze-by-name name (as-int x) (as-int y)))
     (GET "/maze/:x/:y" [x y]
         (binary-generate-maze-json (as-int x) (as-int y)))
     (GET "/random" []
@@ -197,3 +208,5 @@
 
 (defn -main []
   (jetty/run-jetty (wrap-params handler (assoc site-defaults :security false)) {:port 3000}))
+
+
