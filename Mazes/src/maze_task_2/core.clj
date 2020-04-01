@@ -169,7 +169,7 @@
     (:maze (rand-nth (mc/find-maps db coll)))))
 
 ;Creates a new aldous broder maze and stores it
-(defn create-ad-maze-by-name [name x y]
+(defn create-ab-maze-by-name [name x y]
   (let [conn (mg/connect)
         db   (mg/get-db conn "MazeDB")
         coll "Mazes"]
@@ -196,10 +196,10 @@
         (get-maze-by-name name))
     (GET "/binary/:name/:x/:y" [name x y]
         (create-binary-maze-by-name name (as-int x) (as-int y)))
-    (GET "/ad/:name/:x/:y" [name x y]
-        (create-ad-maze-by-name name (as-int x) (as-int y)))
+    (GET "/ab/:name/:x/:y" [name x y]
+        (create-ab-maze-by-name name (as-int x) (as-int y)))
     (GET "/maze/:x/:y" [x y]
-        (binary-generate-maze-json (as-int x) (as-int y)))
+        (aldous-broder-generate-maze-json (as-int x) (as-int y)))
     (GET "/random" []
         (get-random-maze))
     (GET "/list" []

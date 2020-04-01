@@ -48,8 +48,8 @@
     (slurp (str "http://localhost:3000/maze/" x "/" y))
     :key-fn keyword))
 
-(defn create-ad [x y name] ;Creates a maze of name and size and save to DB
-  (slurp (str "http://localhost:3000/ad/" (clojure.string/replace name #" " "%20") "/" x "/" y)))
+(defn create-ab [x y name] ;Creates a maze of name and size and save to DB
+  (slurp (str "http://localhost:3000/ab/" (clojure.string/replace name #" " "%20") "/" x "/" y)))
 
 (defn create-binary [x y name] ;Creates a maze of name and size and save to DB
   (slurp (str "http://localhost:3000/binary/" (clojure.string/replace name #" " "%20") "/" x "/" y)))
@@ -233,7 +233,7 @@
     [:div {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"}
      [:h2 {:style "margin:10px;"} "Create Aldous Broder Maze"]
      [:form
-      {:action "/create-ad"}
+      {:action "/create-ab"}
       [:input {:id "name"
                :type "text"
                :name "name"
@@ -263,8 +263,8 @@
              (to-html-table (dijkstra (solve-new-maze (as-int x) (as-int y)))))
            (GET "/create-binary" [name x y :as {u :uri rm :request-method}]
              (create-binary (as-int x) (as-int y) name))
-           (GET "/create-ad" [name x y :as {u :uri rm :request-method}]
-             (create-ad (as-int x) (as-int y) name))
+           (GET "/create-ab" [name x y :as {u :uri rm :request-method}]
+             (create-ab (as-int x) (as-int y) name))
            (GET "/" []
              (home-page))
            (route/not-found (html [:h1 {:style "font-family: Helvetica, sans-serif; text-align:center; margin:20px;"} "Page not found"])))
